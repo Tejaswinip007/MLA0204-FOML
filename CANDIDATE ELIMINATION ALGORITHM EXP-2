@@ -1,0 +1,128 @@
+# CANDIDATE-ELIMINATION ALGORITHM
+
+from google.colab import files
+import pandas as pd
+from itertools import product
+
+# Upload dataset
+print("Upload enjoysport.csv")
+uploaded = files.upload()
+
+filename = list(uploaded.keys())[0]
+
+# Read dataset
+data = pd.read_csv(filename)
+
+print("\nTraining Dataset:")
+print(data)
+
+
+# Function to check whether hypothesis covers an example
+def covers(hypothesis, example):
+
+    for h, x in zip(hypothesis, example):
+
+        if h != "?" and h != x:
+            return False
+
+    return True
+
+
+# Candidate-Elimination Algorithm
+attributes = list(data.columns[:-1])
+target = data.columns[-1]
+
+# Get possible values for each attribute
+domains = []
+
+for attribute in attributes:
+    domains.append(sorted(data[attribute].unique()))
+
+# Generate all possible hypotheses
+all_hypotheses = list(
+    product(*[domain + ["?"] for domain in domains])
+)
+
+# Find consistent hypotheses
+consistent_hypotheses = []
+
+for hypothesis in all_hypotheses:
+
+    consistent = True
+
+    for _, row in data.iterrows():
+
+        example = list(row[attributes])
+
+        actual = row[target].lower() == "yes"
+
+        prediction = covers(hypothesis, example)
+
+        if prediction != actual:
+            consistent = False
+            break
+
+    if consistent:
+        consistent_hypotheses.append(hypothesis)
+
+
+# Function to check generality
+def more_general_or_equal(h1, h2):
+
+    return all(
+        a == "?" or a == b
+        for a, b in zip(h1, h2)
+    )
+
+
+# Find Specific Boundary
+S = []
+
+for h in consistent_hypotheses:
+
+    if not any(
+        h != other and
+        more_general_or_equal(h, other)
+        for other in consistent_hypotheses
+    ):
+        S.append(h)
+
+
+# Find General Boundary
+G = []
+
+for h in consistent_hypotheses:
+
+    if not any(
+        h != other and
+        more_general_or_equal(other, h)
+        for other in consistent_hypotheses
+    ):
+        G.append(h)
+
+
+# Display results
+def display(h):
+    return "<" + ", ".join(h) + ">"
+
+
+print("\nCANDIDATE-ELIMINATION ALGORITHM")
+print("--------------------------------")
+
+print("\nSpecific Boundary (S):")
+
+for h in S:
+    print(display(h))
+
+print("\nGeneral Boundary (G):")
+
+for h in G:
+    print(display(h))
+
+print("\nAll Consistent Hypotheses:")
+
+for i, h in enumerate(consistent_hypotheses, 1):
+    print(str(i) + ". " + display(h))
+
+print("\nTotal Consistent Hypotheses:",
+      len(consistent_hypotheses))
