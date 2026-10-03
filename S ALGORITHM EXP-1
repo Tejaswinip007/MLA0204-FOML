@@ -1,0 +1,42 @@
+from google.colab import files
+import pandas as pd
+
+# Upload dataset
+print("Upload enjoysport.csv")
+uploaded = files.upload()
+
+filename = list(uploaded.keys())[0]
+
+# Read dataset
+data = pd.read_csv(filename)
+
+print("\nTraining Dataset:")
+print(data)
+
+
+# FIND-S Algorithm
+attributes = list(data.columns[:-1])
+target = data.columns[-1]
+
+# Initialize most specific hypothesis
+hypothesis = ["0"] * len(attributes)
+
+for _, row in data.iterrows():
+
+    # Consider only positive examples
+    if row[target].lower() == "yes":
+
+        for i, attribute in enumerate(attributes):
+
+            if hypothesis[i] == "0":
+                hypothesis[i] = row[attribute]
+
+            elif hypothesis[i] != row[attribute]:
+                hypothesis[i] = "?"
+
+
+# Display result
+print("\nFIND-S Algorithm")
+print("----------------")
+print("Most Specific Hypothesis:")
+print("<" + ", ".join(hypothesis) + ">")
