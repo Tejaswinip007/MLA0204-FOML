@@ -1,0 +1,187 @@
+import pandas as pd
+import numpy as np
+import math
+
+# Upload CSV file
+from google.colab import files
+uploaded = files.upload()
+
+# Read uploaded file
+filename = list(uploaded.keys())[0]
+data = pd.read_csv(filename)
+
+# Remove extra spaces from column names
+data.columns = data.columns.str.strip()
+
+# Rename target column to lowercase
+data.rename(columns={'Target': 'target'}, inplace=True)
+
+print("Dataset:")
+print(data)
+
+# Decision Tree Node
+class DecisionTreeNode:
+    def __init__(self, attribute=None, label=None):
+        self.attribute = attribute
+        self.label = label
+        self.branches = {}
+
+
+# Entropy
+def entropy(data):
+    target = data['target']
+
+    counts = target.value_counts()
+    n = len(target)
+
+    ent = 0
+
+    for count in counts:
+        p = count / n
+        ent -= p * math.log2(p)
+
+    return ent
+
+
+# Information Gain
+def information_gain(data, attribute):
+
+    total_entropy = entropy(data)
+    weighted_entropy = 0
+    n = len(data)
+
+    for value in data[attribute].unique():
+
+        subset = data[data[attribute] == value]
+
+        weighted_entropy += (
+            len(subset) / n
+        ) * entropy(subset)
+
+    return total_entropy - weighted_entropy
+
+
+# ID3 Algorithm
+def id3(data, attributes):
+
+    # If all target values are same
+    if len(data['target'].unique()) == 1:
+        return DecisionTreeNode(
+            label=data['target'].iloc[0]
+        )
+
+    # If no attributes remain
+    if len(attributes) == 0:
+        return DecisionTreeNode(
+            label=data['target'].value_counts().idxmax()
+        )
+
+    # Calculate information gain
+    gains = {}
+
+    for attribute in attributes:
+        gains[attribute] = information_gain(
+            data, attribute
+        )
+
+    # Select best attribute
+    best_attribute = max(
+        gains,
+        key=gains.get
+    )
+
+    node = DecisionTreeNode(
+        attribute=best_attribute
+    )
+
+    # Create branches
+    for value in data[best_attribute].unique():
+
+        subset = data[
+            data[best_attribute] == value
+        ]
+
+        new_attributes = attributes.copy()
+        new_attributes.remove(best_attribute)
+
+        node.branches[value] = id3(
+            subset,
+            new_attributes
+        )
+
+    return node
+
+
+# Get attributes
+attributes = data.columns[:-1].tolist()
+
+# Build decision tree
+root = id3(data, attributes)
+
+print("\nDecision Tree created successfully!")
+print("Root Attribute:", root.attribute)
+
+
+# Display tree
+def print_tree(tree, level=0):
+
+    if tree.label is not None:
+        print("  " * level + "→ " + str(tree.label))
+        return
+
+    print("  " * level + "[" + tree.attribute + "]")
+
+    for value, branch in tree.branches.items():
+
+        print(
+            "  " * level +
+            "├── " + str(value)
+        )
+
+        print_tree(
+            branch,
+            level + 1
+        )
+
+
+print("\nDecision Tree:")
+print_tree(root)
+
+
+# Classification
+def classify(sample, tree):
+
+    if tree.label is not None:
+        return tree.label
+
+    attribute = tree.attribute
+    value = sample[attribute]
+
+    if value in tree.branches:
+        return classify(
+            sample,
+            tree.branches[value]
+        )
+
+    return "Unknown"
+
+
+# Take input for prediction
+print("\nEnter values for prediction:")
+
+sample = {}
+
+for attribute in attributes:
+
+    sample[attribute] = input(
+        "Enter " + attribute + ": "
+    ).lower()
+
+
+# Prediction
+prediction = classify(
+    sample,
+    root
+)
+
+print("\nPredicted Result:", prediction)
